@@ -3,7 +3,7 @@ package stack_test
 import (
 	"testing"
 
-	stack "github.com/tmdgusya/go-data-structure"
+	stack "github.com/tmdgusya/go-data-structure/stack"
 )
 
 func TestResizing(t *testing.T) {
