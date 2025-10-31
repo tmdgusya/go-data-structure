@@ -1,18 +1,18 @@
 package heap
 
-import (
-	"golang.org/x/exp/constraints"
-)
+type Prioritized interface {
+	GetPriority() int
+}
 
-type Heap[T constraints.Ordered] struct {
+type Heap[T Prioritized] struct {
 	array      []*T
 	array_size int
 	last_index int
 }
 
-func NewHeap(size int) *Heap[int] {
-	return &Heap[int]{
-		array:      make([]*int, size),
+func NewHeap[T Prioritized](size int) *Heap[T] {
+	return &Heap[T]{
+		array:      make([]*T, size),
 		array_size: size,
 		last_index: 0,
 	}
@@ -46,8 +46,12 @@ func (h *Heap[T]) Insert(value T) {
 	curr := h.last_index
 	h.last_index++ // 다음 삽입 위치로 이동
 
+	h.moveUp(curr)
+}
+
+func (h *Heap[T]) moveUp(curr int) {
 	parent := (curr - 1) / 2
-	for curr > 0 && *h.array[parent] < *h.array[curr] {
+	for curr > 0 && (*h.array[parent]).GetPriority() < (*h.array[curr]).GetPriority() {
 		temp := h.array[parent] // 주소
 		h.array[parent] = h.array[curr]
 		h.array[curr] = temp
@@ -70,8 +74,38 @@ func (h *Heap[T]) Remove() T {
 	h.array[h.last_index-1] = nil
 	h.last_index--
 
-	// 자식들 중에 큰걸 찾아서 바꿔줘야 함
-	curr := 0
+	// 힙에 원소가 남아있으면 heapify-down
+	if h.last_index > 0 {
+		h.moveDown(0)
+	}
+
+	return result
+}
+
+func (h *Heap[T]) Update(idx int, value T) bool {
+	if idx >= h.last_index || idx < 0 {
+		return false
+	}
+
+	old := (*h.array[idx]).GetPriority()
+	new := value.GetPriority()
+
+	// 값을 실제로 업데이트
+	h.array[idx] = &value
+
+	if old < new {
+		// 기존보다 우선순위가 높아졌으므로 위로 이동
+		h.moveUp(idx)
+	} else if old > new {
+		// 기존보다 우선순위가 낮아졌으므로 아래로 이동
+		h.moveDown(idx)
+	}
+	// old == new 이면 아무것도 안 해도 됨
+
+	return true
+}
+
+func (h *Heap[T]) moveDown(curr int) {
 	for {
 		left := curr*2 + 1
 		right := curr*2 + 2
@@ -82,11 +116,11 @@ func (h *Heap[T]) Remove() T {
 
 		larger := left
 
-		if right < h.last_index && *h.array[right] > *h.array[left] {
+		if right < h.last_index && (*h.array[right]).GetPriority() > (*h.array[left]).GetPriority() {
 			larger = right
 		}
 
-		if *h.array[curr] >= *h.array[larger] {
+		if (*h.array[curr]).GetPriority() >= (*h.array[larger]).GetPriority() {
 			// 현재가 자식보다 크면 복구 할 필요 없음
 			break
 		}
@@ -97,6 +131,4 @@ func (h *Heap[T]) Remove() T {
 
 		curr = larger
 	}
-
-	return result
 }
