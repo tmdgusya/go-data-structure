@@ -133,3 +133,139 @@ func TestInsertLargeData(t *testing.T) {
 		t.Errorf("대량 데이터 삽입 후 Max Heap 속성이 올바르지 않습니다. 기대값: %d, 실제값: %d", max_value, h.Peek())
 	}
 }
+
+func TestRemoveSingleElement(t *testing.T) {
+	h := heap.NewHeap(10)
+	h.Insert(42)
+
+	removed := h.Remove()
+	if removed != 42 {
+		t.Errorf("Remove 반환값이 올바르지 않습니다. 기대값: 42, 실제값: %d", removed)
+	}
+
+	if h.Size() != 0 {
+		t.Errorf("Remove 후 힙의 크기가 올바르지 않습니다. 기대값: 0, 실제값: %d", h.Size())
+	}
+}
+
+func TestRemoveFromEmptyHeap(t *testing.T) {
+	h := heap.NewHeap(10)
+
+	removed := h.Remove()
+	if removed != 0 {
+		t.Errorf("빈 힙에서 Remove 시 zero value를 반환해야 합니다. 기대값: 0, 실제값: %d", removed)
+	}
+}
+
+func TestRemoveMaxHeapProperty(t *testing.T) {
+	h := heap.NewHeap(10)
+
+	// [50, 30, 40, 10, 20] 힙 생성
+	values := []int{50, 30, 40, 10, 20}
+	for _, v := range values {
+		h.Insert(v)
+	}
+
+	// 첫 번째 Remove: 50이 나와야 함
+	removed := h.Remove()
+	if removed != 50 {
+		t.Errorf("첫 번째 Remove가 최대값을 반환하지 않았습니다. 기대값: 50, 실제값: %d", removed)
+	}
+
+	// Remove 후에도 Max Heap 속성 유지되는지 확인
+	if h.Peek() != 40 {
+		t.Errorf("Remove 후 Max Heap 속성이 유지되지 않았습니다. 기대값: 40, 실제값: %d", h.Peek())
+	}
+}
+
+func TestRemoveMultipleElements(t *testing.T) {
+	h := heap.NewHeap(10)
+
+	// 1부터 10까지 삽입
+	for i := 1; i <= 10; i++ {
+		h.Insert(i)
+	}
+
+	// 내림차순으로 제거되는지 확인
+	expected := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
+	for i, exp := range expected {
+		removed := h.Remove()
+		if removed != exp {
+			t.Errorf("Remove %d번째: 기대값 %d, 실제값 %d", i+1, exp, removed)
+		}
+	}
+
+	// 모두 제거 후 힙이 비어있는지 확인
+	if h.Size() != 0 {
+		t.Errorf("모든 원소 제거 후 힙의 크기가 0이 아닙니다. 실제값: %d", h.Size())
+	}
+}
+
+func TestRemoveAndInsertMixed(t *testing.T) {
+	h := heap.NewHeap(5)
+
+	// 삽입과 삭제를 섞어서 수행
+	h.Insert(10)
+	h.Insert(20)
+	h.Insert(15)
+
+	if h.Remove() != 20 {
+		t.Error("첫 번째 Remove가 20을 반환하지 않았습니다")
+	}
+
+	h.Insert(25)
+	h.Insert(5)
+
+	if h.Peek() != 25 {
+		t.Errorf("삽입/삭제 후 최대값이 올바르지 않습니다. 기대값: 25, 실제값: %d", h.Peek())
+	}
+}
+
+func TestRemoveWithDuplicates(t *testing.T) {
+	h := heap.NewHeap(10)
+
+	// 중복 값 삽입
+	values := []int{5, 10, 5, 10, 5}
+	for _, v := range values {
+		h.Insert(v)
+	}
+
+	// 첫 두 번은 10이 나와야 함
+	if h.Remove() != 10 {
+		t.Error("중복 값 제거 - 첫 번째 10이 나오지 않았습니다")
+	}
+	if h.Remove() != 10 {
+		t.Error("중복 값 제거 - 두 번째 10이 나오지 않았습니다")
+	}
+
+	// 나머지는 5
+	for i := 0; i < 3; i++ {
+		if h.Remove() != 5 {
+			t.Errorf("중복 값 제거 - %d번째 5가 나오지 않았습니다", i+1)
+		}
+	}
+}
+
+func TestRemoveAllElements(t *testing.T) {
+	h := heap.NewHeap(5)
+
+	values := []int{15, 10, 20, 5, 25}
+	for _, v := range values {
+		h.Insert(v)
+	}
+
+	// 모든 원소를 내림차순으로 제거
+	prev := h.Remove() // 25
+	for h.Size() > 0 {
+		current := h.Remove()
+		if current > prev {
+			t.Errorf("Remove 순서가 올바르지 않습니다. 이전값: %d, 현재값: %d", prev, current)
+		}
+		prev = current
+	}
+
+	// 빈 힙에서 한 번 더 Remove
+	if h.Remove() != 0 {
+		t.Error("빈 힙에서 Remove 시 zero value를 반환해야 합니다")
+	}
+}
