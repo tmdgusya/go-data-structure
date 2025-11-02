@@ -1,6 +1,7 @@
 package grid
 
 import (
+	"math"
 	"testing"
 )
 
@@ -537,5 +538,232 @@ func TestDeleteWithApproxEqual(t *testing.T) {
 	xbin, ybin := g.GetBins(5.0, 5.0)
 	if g.bins[xbin][ybin] != nil {
 		t.Error("Expected bin to be empty after deletion")
+	}
+}
+
+func TestMinDistToBinPointInsideBin(t *testing.T) {
+	g := Grid{
+		num_x_bins:  10,
+		num_y_bins:  10,
+		x_start:     0.0,
+		x_end:       100.0,
+		y_start:     0.0,
+		y_end:       100.0,
+		x_bin_width: 10.0,
+		y_bin_width: 10.0,
+	}
+
+	// Point inside bin (0, 0): [0, 10) x [0, 10)
+	dist := g.MinDistToBind(0, 0, 5.0, 5.0)
+	if dist != 0.0 {
+		t.Errorf("Expected distance 0.0 for point inside bin, got %f", dist)
+	}
+
+	// Point at the edge (x_min, y_min)
+	dist = g.MinDistToBind(1, 1, 10.0, 10.0)
+	if dist != 0.0 {
+		t.Errorf("Expected distance 0.0 for point at edge of bin, got %f", dist)
+	}
+}
+
+func TestMinDistToBinPointOutsideLeft(t *testing.T) {
+	g := Grid{
+		num_x_bins:  10,
+		num_y_bins:  10,
+		x_start:     0.0,
+		x_end:       100.0,
+		y_start:     0.0,
+		y_end:       100.0,
+		x_bin_width: 10.0,
+		y_bin_width: 10.0,
+	}
+
+	// Point to the left of bin (1, 1): [10, 20) x [10, 20)
+	// Point at (5.0, 15.0), should be 5.0 units to the left
+	dist := g.MinDistToBind(1, 1, 5.0, 15.0)
+	expected := 5.0
+	if dist != expected {
+		t.Errorf("Expected distance %f for point to the left, got %f", expected, dist)
+	}
+}
+
+func TestMinDistToBinPointOutsideRight(t *testing.T) {
+	g := Grid{
+		num_x_bins:  10,
+		num_y_bins:  10,
+		x_start:     0.0,
+		x_end:       100.0,
+		y_start:     0.0,
+		y_end:       100.0,
+		x_bin_width: 10.0,
+		y_bin_width: 10.0,
+	}
+
+	// Point to the right of bin (1, 1): [10, 20) x [10, 20)
+	// Point at (25.0, 15.0), should be 5.0 units to the right
+	dist := g.MinDistToBind(1, 1, 25.0, 15.0)
+	expected := 5.0
+	if dist != expected {
+		t.Errorf("Expected distance %f for point to the right, got %f", expected, dist)
+	}
+}
+
+func TestMinDistToBinPointOutsideBelow(t *testing.T) {
+	g := Grid{
+		num_x_bins:  10,
+		num_y_bins:  10,
+		x_start:     0.0,
+		x_end:       100.0,
+		y_start:     0.0,
+		y_end:       100.0,
+		x_bin_width: 10.0,
+		y_bin_width: 10.0,
+	}
+
+	// Point below bin (1, 1): [10, 20) x [10, 20)
+	// Point at (15.0, 5.0), should be 5.0 units below
+	dist := g.MinDistToBind(1, 1, 15.0, 5.0)
+	expected := 5.0
+	if dist != expected {
+		t.Errorf("Expected distance %f for point below, got %f", expected, dist)
+	}
+}
+
+func TestMinDistToBinPointOutsideAbove(t *testing.T) {
+	g := Grid{
+		num_x_bins:  10,
+		num_y_bins:  10,
+		x_start:     0.0,
+		x_end:       100.0,
+		y_start:     0.0,
+		y_end:       100.0,
+		x_bin_width: 10.0,
+		y_bin_width: 10.0,
+	}
+
+	// Point above bin (1, 1): [10, 20) x [10, 20)
+	// Point at (15.0, 25.0), should be 5.0 units above
+	dist := g.MinDistToBind(1, 1, 15.0, 25.0)
+	expected := 5.0
+	if dist != expected {
+		t.Errorf("Expected distance %f for point above, got %f", expected, dist)
+	}
+}
+
+func TestMinDistToBinPointAtCorner(t *testing.T) {
+	g := Grid{
+		num_x_bins:  10,
+		num_y_bins:  10,
+		x_start:     0.0,
+		x_end:       100.0,
+		y_start:     0.0,
+		y_end:       100.0,
+		x_bin_width: 10.0,
+		y_bin_width: 10.0,
+	}
+
+	tests := []struct {
+		name     string
+		xbin     int
+		ybin     int
+		x        float64
+		y        float64
+		expected float64
+	}{
+		{
+			name:     "Bottom-left corner",
+			xbin:     1,
+			ybin:     1,
+			x:        5.0,               // 5 units to the left of x_min=10
+			y:        5.0,               // 5 units below y_min=10
+			expected: 7.071067811865476, // sqrt(5^2 + 5^2) = 5*sqrt(2)
+		},
+		{
+			name:     "Top-right corner",
+			xbin:     1,
+			ybin:     1,
+			x:        23.0, // 3 units to the right of x_max=20
+			y:        24.0, // 4 units above y_max=20
+			expected: 5.0,  // sqrt(3^2 + 4^2) = 5
+		},
+		{
+			name:     "Bottom-right corner",
+			xbin:     2,
+			ybin:     2,
+			x:        36.0, // 6 units to the right of x_max=30
+			y:        12.0, // 8 units below y_min=20
+			expected: 10.0, // sqrt(6^2 + 8^2) = 10
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dist := g.MinDistToBind(tt.xbin, tt.ybin, tt.x, tt.y)
+			if math.Abs(dist-tt.expected) > threshold {
+				t.Errorf("Expected distance %f, got %f", tt.expected, dist)
+			}
+		})
+	}
+}
+
+func TestMinDistToBinInvalidBins(t *testing.T) {
+	g := Grid{
+		num_x_bins:  10,
+		num_y_bins:  10,
+		x_start:     0.0,
+		x_end:       100.0,
+		y_start:     0.0,
+		y_end:       100.0,
+		x_bin_width: 10.0,
+		y_bin_width: 10.0,
+	}
+
+	tests := []struct {
+		name string
+		xbin int
+		ybin int
+	}{
+		{"Negative xbin", -1, 5},
+		{"Negative ybin", 5, -1},
+		{"xbin too large", 10, 5},
+		{"ybin too large", 5, 10},
+		{"Both negative", -1, -1},
+		{"Both too large", 10, 10},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dist := g.MinDistToBind(tt.xbin, tt.ybin, 50.0, 50.0)
+			if !math.IsInf(dist, -1) {
+				t.Errorf("Expected -Inf for invalid bin indices, got %f", dist)
+			}
+		})
+	}
+}
+
+func TestMinDistToBinWithNegativeCoordinates(t *testing.T) {
+	g := Grid{
+		num_x_bins:  10,
+		num_y_bins:  10,
+		x_start:     -50.0,
+		x_end:       50.0,
+		y_start:     -50.0,
+		y_end:       50.0,
+		x_bin_width: 10.0,
+		y_bin_width: 10.0,
+	}
+
+	// Bin (5, 5) covers [0, 10) x [0, 10)
+	// Point at (5.0, 5.0) is inside
+	dist := g.MinDistToBind(5, 5, 5.0, 5.0)
+	if dist != 0.0 {
+		t.Errorf("Expected distance 0.0 for point inside bin, got %f", dist)
+	}
+
+	// Point at (-55.0, 5.0) is 5 units to the left of bin (0, 5) which covers [-50, -40) x [0, 10)
+	dist = g.MinDistToBind(0, 5, -55.0, 5.0)
+	expected := 5.0
+	if dist != expected {
+		t.Errorf("Expected distance %f, got %f", expected, dist)
 	}
 }
