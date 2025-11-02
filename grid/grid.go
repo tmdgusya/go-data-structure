@@ -34,6 +34,10 @@ func approx_equal(x1 float64, y1 float64, x2 float64, y2 float64) bool {
 	return true
 }
 
+func euclidean_dist(x1 float64, y1 float64, x2 float64, y2 float64) float64 {
+	return math.Sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2))
+}
+
 func (g *Grid) CalculateWidth() {
 	g.x_bin_width = (g.x_end - g.x_start) / float64(g.num_x_bins)
 	g.y_bin_width = (g.y_end - g.y_start) / float64(g.num_y_bins)
@@ -128,4 +132,29 @@ func (g *Grid) MinDistToBind(xbin int, ybin int, x float64, y float64) float64 {
 	}
 
 	return math.Sqrt(x_dist*x_dist + y_dist*y_dist)
+}
+
+func (g *Grid) LinearScan(x float64, y float64) *GridPoint {
+	best_dist := math.Inf(1)
+	var best_candidate *GridPoint
+	xbin := 0
+	for xbin < g.num_x_bins {
+		ybin := 0
+		for ybin < g.num_y_bins {
+			if g.MinDistToBind(xbin, ybin, x, y) < best_dist {
+				current := g.bins[xbin][ybin]
+				for current != nil {
+					dist := euclidean_dist(x, y, current.x, current.y)
+					if dist < best_dist {
+						best_dist = dist
+						best_candidate = current
+					}
+					current = current.next
+				}
+			}
+			ybin++
+		}
+		xbin++
+	}
+	return best_candidate
 }

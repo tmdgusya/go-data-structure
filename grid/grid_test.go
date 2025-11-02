@@ -767,3 +767,328 @@ func TestMinDistToBinWithNegativeCoordinates(t *testing.T) {
 		t.Errorf("Expected distance %f, got %f", expected, dist)
 	}
 }
+
+func TestLinearScanEmptyGrid(t *testing.T) {
+	g := Grid{
+		num_x_bins:  3,
+		num_y_bins:  3,
+		x_start:     0.0,
+		x_end:       30.0,
+		y_start:     0.0,
+		y_end:       30.0,
+		x_bin_width: 10.0,
+		y_bin_width: 10.0,
+		bins:        make([][]*GridPoint, 3),
+	}
+
+	// Initialize bins
+	for i := range g.bins {
+		g.bins[i] = make([]*GridPoint, 3)
+	}
+
+	// Search in empty grid
+	result := g.LinearScan(15.0, 15.0)
+	if result != nil {
+		t.Error("Expected LinearScan to return nil for empty grid")
+	}
+}
+
+func TestLinearScanSinglePoint(t *testing.T) {
+	g := Grid{
+		num_x_bins:  3,
+		num_y_bins:  3,
+		x_start:     0.0,
+		x_end:       30.0,
+		y_start:     0.0,
+		y_end:       30.0,
+		x_bin_width: 10.0,
+		y_bin_width: 10.0,
+		bins:        make([][]*GridPoint, 3),
+	}
+
+	// Initialize bins
+	for i := range g.bins {
+		g.bins[i] = make([]*GridPoint, 3)
+	}
+
+	// Insert single point
+	g.Insert(5.0, 5.0)
+
+	// Search should find the only point
+	result := g.LinearScan(7.0, 7.0)
+	if result == nil {
+		t.Fatal("Expected LinearScan to find a point")
+	}
+
+	if result.x != 5.0 || result.y != 5.0 {
+		t.Errorf("Expected to find point (5.0, 5.0), got (%f, %f)", result.x, result.y)
+	}
+}
+
+func TestLinearScanMultiplePointsSameBin(t *testing.T) {
+	g := Grid{
+		num_x_bins:  3,
+		num_y_bins:  3,
+		x_start:     0.0,
+		x_end:       30.0,
+		y_start:     0.0,
+		y_end:       30.0,
+		x_bin_width: 10.0,
+		y_bin_width: 10.0,
+		bins:        make([][]*GridPoint, 3),
+	}
+
+	// Initialize bins
+	for i := range g.bins {
+		g.bins[i] = make([]*GridPoint, 3)
+	}
+
+	// Insert multiple points in the same bin
+	g.Insert(2.0, 2.0)
+	g.Insert(5.0, 5.0)
+	g.Insert(8.0, 8.0)
+
+	// Search for closest point to (6.0, 6.0)
+	result := g.LinearScan(6.0, 6.0)
+	if result == nil {
+		t.Fatal("Expected LinearScan to find a point")
+	}
+
+	// The closest point should be (5.0, 5.0)
+	// Distance from (6, 6) to (5, 5) = sqrt(2) ≈ 1.414
+	// Distance from (6, 6) to (8, 8) = sqrt(8) ≈ 2.828
+	// Distance from (6, 6) to (2, 2) = sqrt(32) ≈ 5.657
+	if result.x != 5.0 || result.y != 5.0 {
+		t.Errorf("Expected to find closest point (5.0, 5.0), got (%f, %f)", result.x, result.y)
+	}
+}
+
+func TestLinearScanMultiplePointsDifferentBins(t *testing.T) {
+	g := Grid{
+		num_x_bins:  3,
+		num_y_bins:  3,
+		x_start:     0.0,
+		x_end:       30.0,
+		y_start:     0.0,
+		y_end:       30.0,
+		x_bin_width: 10.0,
+		y_bin_width: 10.0,
+		bins:        make([][]*GridPoint, 3),
+	}
+
+	// Initialize bins
+	for i := range g.bins {
+		g.bins[i] = make([]*GridPoint, 3)
+	}
+
+	// Insert points in different bins
+	g.Insert(5.0, 5.0)   // Bin (0, 0)
+	g.Insert(15.0, 15.0) // Bin (1, 1)
+	g.Insert(25.0, 25.0) // Bin (2, 2)
+
+	// Search for closest point to (14.0, 14.0)
+	result := g.LinearScan(14.0, 14.0)
+	if result == nil {
+		t.Fatal("Expected LinearScan to find a point")
+	}
+
+	// The closest point should be (15.0, 15.0)
+	// Distance from (14, 14) to (15, 15) = sqrt(2) ≈ 1.414
+	// Distance from (14, 14) to (5, 5) = sqrt(162) ≈ 12.728
+	// Distance from (14, 14) to (25, 25) = sqrt(242) ≈ 15.556
+	if result.x != 15.0 || result.y != 15.0 {
+		t.Errorf("Expected to find closest point (15.0, 15.0), got (%f, %f)", result.x, result.y)
+	}
+}
+
+func TestLinearScanExactMatch(t *testing.T) {
+	g := Grid{
+		num_x_bins:  3,
+		num_y_bins:  3,
+		x_start:     0.0,
+		x_end:       30.0,
+		y_start:     0.0,
+		y_end:       30.0,
+		x_bin_width: 10.0,
+		y_bin_width: 10.0,
+		bins:        make([][]*GridPoint, 3),
+	}
+
+	// Initialize bins
+	for i := range g.bins {
+		g.bins[i] = make([]*GridPoint, 3)
+	}
+
+	// Insert points
+	g.Insert(5.0, 5.0)
+	g.Insert(15.0, 15.0)
+
+	// Search for exact match
+	result := g.LinearScan(5.0, 5.0)
+	if result == nil {
+		t.Fatal("Expected LinearScan to find a point")
+	}
+
+	// Should find exact match with distance 0
+	if result.x != 5.0 || result.y != 5.0 {
+		t.Errorf("Expected to find exact match (5.0, 5.0), got (%f, %f)", result.x, result.y)
+	}
+}
+
+func TestLinearScanQueryOutsideGrid(t *testing.T) {
+	g := Grid{
+		num_x_bins:  3,
+		num_y_bins:  3,
+		x_start:     0.0,
+		x_end:       30.0,
+		y_start:     0.0,
+		y_end:       30.0,
+		x_bin_width: 10.0,
+		y_bin_width: 10.0,
+		bins:        make([][]*GridPoint, 3),
+	}
+
+	// Initialize bins
+	for i := range g.bins {
+		g.bins[i] = make([]*GridPoint, 3)
+	}
+
+	// Insert a point
+	g.Insert(5.0, 5.0)
+
+	// Query point outside grid bounds
+	result := g.LinearScan(50.0, 50.0)
+	if result == nil {
+		t.Fatal("Expected LinearScan to find a point even with query outside grid")
+	}
+
+	// Should still find the closest point in the grid
+	if result.x != 5.0 || result.y != 5.0 {
+		t.Errorf("Expected to find point (5.0, 5.0), got (%f, %f)", result.x, result.y)
+	}
+}
+
+func TestLinearScanAllCorners(t *testing.T) {
+	g := Grid{
+		num_x_bins:  2,
+		num_y_bins:  2,
+		x_start:     0.0,
+		x_end:       20.0,
+		y_start:     0.0,
+		y_end:       20.0,
+		x_bin_width: 10.0,
+		y_bin_width: 10.0,
+		bins:        make([][]*GridPoint, 2),
+	}
+
+	// Initialize bins
+	for i := range g.bins {
+		g.bins[i] = make([]*GridPoint, 2)
+	}
+
+	// Insert points in all four corners
+	g.Insert(1.0, 1.0)   // Bottom-left
+	g.Insert(19.0, 1.0)  // Bottom-right
+	g.Insert(1.0, 19.0)  // Top-left
+	g.Insert(19.0, 19.0) // Top-right
+
+	tests := []struct {
+		name      string
+		queryX    float64
+		queryY    float64
+		expectedX float64
+		expectedY float64
+	}{
+		{"Center should find any point", 10.0, 10.0, -1.0, -1.0}, // Don't check exact, just that something is found
+		{"Near bottom-left", 2.0, 2.0, 1.0, 1.0},
+		{"Near bottom-right", 18.0, 2.0, 19.0, 1.0},
+		{"Near top-left", 2.0, 18.0, 1.0, 19.0},
+		{"Near top-right", 18.0, 18.0, 19.0, 19.0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := g.LinearScan(tt.queryX, tt.queryY)
+			if result == nil {
+				t.Error("Expected LinearScan to find a point")
+				return
+			}
+
+			// For center test, just verify a point was found
+			if tt.expectedX == -1.0 && tt.expectedY == -1.0 {
+				return
+			}
+
+			if result.x != tt.expectedX || result.y != tt.expectedY {
+				t.Errorf("Expected to find point (%f, %f), got (%f, %f)",
+					tt.expectedX, tt.expectedY, result.x, result.y)
+			}
+		})
+	}
+}
+
+func TestLinearScanWithManyPoints(t *testing.T) {
+	g := Grid{
+		num_x_bins:  5,
+		num_y_bins:  5,
+		x_start:     0.0,
+		x_end:       50.0,
+		y_start:     0.0,
+		y_end:       50.0,
+		x_bin_width: 10.0,
+		y_bin_width: 10.0,
+		bins:        make([][]*GridPoint, 5),
+	}
+
+	// Initialize bins
+	for i := range g.bins {
+		g.bins[i] = make([]*GridPoint, 5)
+	}
+
+	// Insert many points
+	points := []struct{ x, y float64 }{
+		{2.5, 2.5}, {7.5, 2.5}, {12.5, 12.5},
+		{22.5, 22.5}, {32.5, 32.5}, {42.5, 42.5},
+		{5.0, 15.0}, {25.0, 35.0}, {45.0, 5.0},
+	}
+
+	for _, p := range points {
+		g.Insert(p.x, p.y)
+	}
+
+	// Query for a point and verify we get something reasonable
+	result := g.LinearScan(10.0, 10.0)
+	if result == nil {
+		t.Fatal("Expected LinearScan to find a point")
+	}
+
+	// Verify it's one of the inserted points
+	found := false
+	for _, p := range points {
+		if result.x == p.x && result.y == p.y {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		t.Errorf("Result point (%f, %f) is not one of the inserted points", result.x, result.y)
+	}
+
+	// The closest point to (10, 10) should be (12.5, 12.5)
+	// Let's verify by calculating distances
+	minDist := math.Inf(1)
+	var closestPoint *struct{ x, y float64 }
+	for i := range points {
+		dist := euclidean_dist(10.0, 10.0, points[i].x, points[i].y)
+		if dist < minDist {
+			minDist = dist
+			closestPoint = &points[i]
+		}
+	}
+
+	if result.x != closestPoint.x || result.y != closestPoint.y {
+		t.Errorf("Expected closest point (%f, %f), got (%f, %f)",
+			closestPoint.x, closestPoint.y, result.x, result.y)
+	}
+}
